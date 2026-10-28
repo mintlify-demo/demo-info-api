@@ -1,5 +1,8 @@
 # demo-info-api
 
+> [!NOTE]
+> **Not hosted, and you may not need it.** Without hosting, point Mintlify's Info API URL straight at Auth0 (`https://dev-b65mix7svkohsb6d.us.auth0.com/userinfo`) and use [`auth0/direct-userinfo-action.js`](auth0/direct-userinfo-action.js): it puts `content`, `apiPlaygroundInputs` and `expiresAt` into Auth0's `/userinfo` response. Auth0 won't let an Action set a claim called `groups` (it's on Auth0's restricted list), so groups go in a namespaced claim that Mintlify reads with **groups from OAuth token claims**. Use this service only if Mintlify won't accept both settings together; it then needs a public HTTPS host.
+
 The **Info API** for the [mintlify-demo docs](https://mintlify-demo.mintlify.site). When a reader signs in with Auth0, Mintlify calls this service with the reader's access token and gets back [Mintlify user data](https://www.mintlify.com/docs/deploy/authentication-setup#user-data-format):
 
 ```json
@@ -62,7 +65,7 @@ python -m pytest -q
 
 ### 1. Host it
 
-TODO(hosting): this service will be hosted with Mintlify's internal tooling (details TBD). It needs a public HTTPS URL, for example `https://<info-api-host>/userinfo`. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`; health check: `/healthz`.
+TODO(hosting): not hosted. Only needed if the direct Auth0 setup above isn't enough. It needs a public HTTPS URL, for example `https://<info-api-host>/userinfo`. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`; health check: `/healthz`.
 
 ### 2. Auth0: add the groups claim
 
