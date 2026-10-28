@@ -1,13 +1,15 @@
 /**
- * Auth0 Action (Login / Post Login) for running personalization WITHOUT this service:
- * Mintlify's Info API URL points straight at https://dev-b65mix7svkohsb6d.us.auth0.com/userinfo.
+ * Auth0 post-login Action: personalization with NO hosted Info API.
  *
- * Auth0 returns non-namespaced custom claims set on the ID token from /userinfo, so `content`,
- * `apiPlaygroundInputs` and `expiresAt` reach Mintlify as-is. `groups` is a RESTRICTED claim name in
- * Auth0 (setCustomClaim("groups") is silently dropped), so groups go in a namespaced claim that
- * Mintlify reads with its "groups from OAuth token claims" setting.
+ * Mintlify Access (OAuth) -> Info API URL = https://dev-b65mix7svkohsb6d.us.auth0.com/userinfo
+ * Auth0 returns non-namespaced custom claims set on the ID token from /userinfo, so Mintlify
+ * gets `content`, `apiPlaygroundInputs` and `expiresAt` from it.
  *
- * Give a user a group in User Management > Users > (user) > app_metadata: { "groups": ["enterprise"] }
+ * `groups` can NOT be delivered this way: it's on Auth0's restricted claim list and is
+ * silently dropped. The namespaced claim below only helps if Mintlify's "groups from OAuth
+ * token claims" option is enabled for the deployment (not in the dashboard UI today).
+ *
+ * Plan comes from app_metadata.groups, e.g. {"groups": ["enterprise"]}.
  */
 exports.onExecutePostLogin = async (event, api) => {
   const ns = "https://mintlify-demo.mintlify.site";
@@ -21,18 +23,11 @@ exports.onExecutePostLogin = async (event, api) => {
   const plan = groups.includes("enterprise") ? "enterprise" : groups.includes("partner") ? "partner" : "standard";
 
   const email = event.user.email || "";
-  // Database users get their email as `name`; greet them by the part before the @ instead.
-  const name =
-    event.user.name && event.user.name !== email ? event.user.name : event.user.nickname || email.split("@")[0];
+  const name = event.user.name && event.user.name !== email ? event.user.name : event.user.nickname || email.split("@")[0];
 
-  // Groups (namespaced: Auth0 reserves `groups`). Mintlify: Access > token claims, source id_token.
   api.idToken.setCustomClaim(`${ns}/groups`, groups);
-
-  // Mintlify user data, returned by /userinfo because they're set on the ID token.
-  api.idToken.setCustomClaim("content", { name, firstName: name.split(" ")[0], plan, email });
-  api.idToken.setCustomClaim("apiPlaygroundInputs", {
-    header: { "X-API-Key": keys[plan] }, // Todo API REST + GraphQL
-    query: { api_key: keys[plan] }, // Todo API WebSocket events
-  });
+  api.idToken.setCustomClaim("content", { name, firstName: name.split(" ")[0], plan, email, apiKey: keys[plan] });
+  // Key must match the OpenAPI security scheme's `name` exactly (todo-api: apiKey in header "X-API-Key").
+  api.idToken.setCustomClaim("apiPlaygroundInputs", { header: { "X-API-Key": keys[plan] } });
   api.idToken.setCustomClaim("expiresAt", Math.floor(Date.now() / 1000) + 8 * 60 * 60);
 };

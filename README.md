@@ -86,3 +86,9 @@ Optional: to get JWT access tokens (verified locally instead of a call to Auth0 
 curl -i https://<info-api-host>/userinfo                       # 401
 curl -s https://<info-api-host>/userinfo -H "Authorization: Bearer $TOKEN" | jq
 ```
+
+## Groups without hosting (findings, Oct 27 2026)
+- **Auth0 `/userinfo` can't carry `groups`.** Auth0 drops `groups`, `roles` and `permissions`; they're on the [restricted claim list](https://auth0.com/docs/secure/tokens/json-web-tokens/create-custom-claims#general-restrictions). `content`, `apiPlaygroundInputs` and `expiresAt` do come through, which is what `auth0/direct-userinfo-action.js` relies on.
+- **Mintlify's "groups from OAuth token claims" isn't in the dashboard UI.** It's documented (`source`, `groupsClaim`, `groupsDelimiter`). If Mintlify turns it on for this deployment with `{"source":"id_token","groupsClaim":"https://mintlify-demo.mintlify.site/groups"}`, groups work with no other changes.
+- **Experimental: `auth0/jwt-handoff-action.js`.** Switch Mintlify Access to **JWT** and let an Auth0 Action sign the Mintlify JWT (EdDSA, with the key from the dashboard) and redirect to `/login/jwt-callback#<jwt>`. Groups, content and prefill all go in the JWT, and nothing is hosted. Signing and verification were tested locally with `jose`. Still untested end to end: whether Auth0 keeps the `#fragment` when it appends `?state=`. Setup steps are in the file header.
+- **Without groups,** gated pages and `POST /todos/bulk` just don't appear. The welcome pages still differ per reader through `user.plan` from `content`.
